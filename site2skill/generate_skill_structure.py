@@ -2,7 +2,13 @@ import os
 import shutil
 import argparse
 import logging
+import sys
 from typing import Optional
+
+if sys.version_info >= (3, 9):
+    from importlib.resources import files as importlib_files
+else:
+    from importlib_resources import files as importlib_files
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -78,22 +84,24 @@ Options:
 """)
         logger.info(f"Created {skill_md_path}")
 
-    # Copy scripts
-    template_dir = os.path.join(os.path.dirname(__file__), "templates")
-    search_script = os.path.join(template_dir, "search_docs.py")
-    scripts_readme = os.path.join(template_dir, "scripts_README.md")
-
+    # Copy scripts using importlib.resources
     dest_search_script = os.path.join(scripts_dir, "search_docs.py")
     dest_readme = os.path.join(scripts_dir, "README.md")
 
-    if os.path.exists(search_script):
-        shutil.copy2(search_script, dest_search_script)
-        logger.info(f"Installed search_docs.py")
-    else:
-        logger.warning(f"Template not found: {search_script}")
+    try:
+        templates = importlib_files("site2skill").joinpath("templates")
 
-    if os.path.exists(scripts_readme):
-        shutil.copy2(scripts_readme, dest_readme)
+        search_script_resource = templates.joinpath("search_docs.py")
+        with open(dest_search_script, "w", encoding="utf-8") as f:
+            f.write(search_script_resource.read_text(encoding="utf-8"))
+        logger.info("Installed search_docs.py")
+
+        readme_resource = templates.joinpath("scripts_README.md")
+        with open(dest_readme, "w", encoding="utf-8") as f:
+            f.write(readme_resource.read_text(encoding="utf-8"))
+        logger.info("Installed scripts/README.md")
+    except Exception as e:
+        logger.warning(f"Failed to copy templates: {e}")
 
     # Copy Markdown files (flat, no categorization)
     if source_dir and os.path.exists(source_dir):

@@ -19,9 +19,10 @@ site2skill = "site2skill.main:main"
 
 [tool.setuptools]
 packages = ["site2skill"]
+package-dir = {"" = "."}
 
 [tool.setuptools.package-data]
-site2skill = ["*.py"]
+site2skill = ["templates/*"]
 
 [tool.uv]
 # No special uv settings needed yet
