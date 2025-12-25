@@ -12,17 +12,25 @@ def sanitize_path(path: str) -> str:
     This function sanitizes each path component separately to avoid issues
     with invalid characters in zip files or file systems.
     
+    Note: Dots (.) are preserved as they are commonly used in domain names
+    (e.g., docs.example.com) and file extensions (e.g., .md). While dots in
+    directory names might be interpreted as file extensions by some systems,
+    this is necessary for preserving the original site structure.
+    
     Args:
         path: The file path to sanitize (can be relative or absolute)
         
     Returns:
-        The sanitized path with safe characters only
+        The sanitized path with safe characters only. If all parts are empty
+        after sanitization, returns "file.md" as a safe default.
         
     Examples:
         >>> sanitize_path("docs.example.com/api/index.md")
         'docs.example.com/api/index.md'
         >>> sanitize_path("docs@example.com/api#v1/index.md")
         'docs_example.com/api_v1/index.md'
+        >>> sanitize_path("")
+        'file.md'
     """
     # Split path into components
     path_parts = path.split(os.sep)

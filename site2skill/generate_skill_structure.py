@@ -126,7 +126,9 @@ Options:
                         continue
                     
                     # Create parent directories if needed
-                    os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+                    parent_dir = os.path.dirname(dst_path)
+                    if parent_dir:  # Only create if there's a parent directory
+                        os.makedirs(parent_dir, exist_ok=True)
 
                     shutil.copy2(src_path, dst_path)
                     file_count += 1
