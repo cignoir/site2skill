@@ -19,6 +19,7 @@ try:
     from .generate_skill_structure import generate_skill_structure
     from .validate_skill import validate_skill
     from .package_skill import package_skill
+    from .utils import sanitize_path, html_to_md_path
 except ImportError as e:
     logger.error(f"Could not import pipeline modules: {e}")
     logger.error("Make sure you have installed dependencies: pip install beautifulsoup4 markdownify pyyaml")
@@ -97,21 +98,10 @@ def main():
             # Determine output filename (preserve directory structure)
             # rel_path is like "docs.pay.jp/v1/cardtoken.html" or "docs.pay.jp/a/b/index.html"
             # We want to preserve the structure and replace .html with .md
-            if rel_path.endswith('.html'):
-                md_rel_path = rel_path[:-5] + '.md'
-            else:
-                md_rel_path = rel_path + '.md'
+            md_rel_path = html_to_md_path(rel_path)
             
             # Sanitize path components to avoid invalid characters in zip
-            # Split path, sanitize each component, rejoin
-            path_parts = md_rel_path.split(os.sep)
-            sanitized_parts = []
-            for part in path_parts:
-                # Replace non-alphanumeric characters (except ._-) with _
-                sanitized_part = re.sub(r'[^a-zA-Z0-9._-]', '_', part)
-                sanitized_parts.append(sanitized_part)
-            
-            md_rel_path = os.path.join(*sanitized_parts) if sanitized_parts else md_rel_path
+            md_rel_path = sanitize_path(md_rel_path)
             md_path = os.path.join(temp_md_dir, md_rel_path)
             
             if os.path.exists(md_path):

@@ -5,10 +5,12 @@ This test validates the fix for the bug where multiple index.html files in diffe
 directories were being overwritten into a single index.md file.
 """
 import os
+import sys
 import tempfile
 import shutil
-from site2skill.main import main
-import sys
+
+# Add the parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def create_test_html_structure(base_dir):
@@ -88,10 +90,9 @@ def test_directory_structure_preserved():
         os.makedirs(temp_md_dir, exist_ok=True)
         
         import glob
-        import re
-        from urllib.parse import urlparse
         import datetime
         from site2skill.convert_to_markdown import convert_html_to_md
+        from site2skill.utils import sanitize_path, html_to_md_path
         
         # Simulate the conversion logic from main.py
         html_files = glob.glob(os.path.join(crawl_dir, "**/*.html"), recursive=True)
@@ -112,19 +113,10 @@ def test_directory_structure_preserved():
             source_url = f"https://{rel_path[:-5] if rel_path.endswith('.html') else rel_path}"
             
             # Apply the fix: preserve directory structure
-            if rel_path.endswith('.html'):
-                md_rel_path = rel_path[:-5] + '.md'
-            else:
-                md_rel_path = rel_path + '.md'
+            md_rel_path = html_to_md_path(rel_path)
             
             # Sanitize path components
-            path_parts = md_rel_path.split(os.sep)
-            sanitized_parts = []
-            for part in path_parts:
-                sanitized_part = re.sub(r'[^a-zA-Z0-9._-]', '_', part)
-                sanitized_parts.append(sanitized_part)
-            
-            md_rel_path = os.path.join(*sanitized_parts) if sanitized_parts else md_rel_path
+            md_rel_path = sanitize_path(md_rel_path)
             md_path = os.path.join(temp_md_dir, md_rel_path)
             
             print(f"Converting: {rel_path} -> {md_rel_path}")

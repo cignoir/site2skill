@@ -5,18 +5,18 @@ This test validates that the entire pipeline preserves directory structure
 from HTML download through final skill generation.
 """
 import os
+import sys
 import tempfile
 import shutil
-import sys
 import glob
 
-# Add the package to path
-sys.path.insert(0, '/home/runner/work/site2skill/site2skill')
+# Add the parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from site2skill.convert_to_markdown import convert_html_to_md
 from site2skill.generate_skill_structure import generate_skill_structure
 from site2skill.normalize_markdown import normalize_markdown
-import re
+from site2skill.utils import sanitize_path, html_to_md_path
 import datetime
 
 
@@ -96,15 +96,10 @@ def run_conversion_pipeline(crawl_dir, temp_base):
         source_url = f"https://{rel_path[:-5] if rel_path.endswith('.html') else rel_path}"
         
         # Apply the fix: preserve directory structure
-        if rel_path.endswith('.html'):
-            md_rel_path = rel_path[:-5] + '.md'
-        else:
-            md_rel_path = rel_path + '.md'
+        md_rel_path = html_to_md_path(rel_path)
         
         # Sanitize path components
-        path_parts = md_rel_path.split(os.sep)
-        sanitized_parts = [re.sub(r'[^a-zA-Z0-9._-]', '_', part) for part in path_parts]
-        md_rel_path = os.path.join(*sanitized_parts) if sanitized_parts else md_rel_path
+        md_rel_path = sanitize_path(md_rel_path)
         md_path = os.path.join(temp_md_dir, md_rel_path)
         
         # Convert
