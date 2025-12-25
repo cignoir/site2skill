@@ -94,24 +94,33 @@ def main():
             rel_path_for_url = rel_path[:-5] if rel_path.endswith('.html') else rel_path
             source_url = f"{scheme}://{rel_path_for_url}"
             
-            # Determine output filename (flattened)
-            filename = os.path.basename(html_file)
-            name_without_ext = os.path.splitext(filename)[0]
+            # Determine output filename (preserve directory structure)
+            # rel_path is like "docs.pay.jp/v1/cardtoken.html" or "docs.pay.jp/a/b/index.html"
+            # We want to preserve the structure and replace .html with .md
+            if rel_path.endswith('.html'):
+                md_rel_path = rel_path[:-5] + '.md'
+            else:
+                md_rel_path = rel_path + '.md'
             
-            # Sanitize filename to avoid invalid characters in zip
-            # Replace non-alphanumeric characters (except ._-) with _
-            name_without_ext = re.sub(r'[^a-zA-Z0-9._-]', '_', name_without_ext)
+            # Sanitize path components to avoid invalid characters in zip
+            # Split path, sanitize each component, rejoin
+            path_parts = md_rel_path.split(os.sep)
+            sanitized_parts = []
+            for part in path_parts:
+                # Replace non-alphanumeric characters (except ._-) with _
+                sanitized_part = re.sub(r'[^a-zA-Z0-9._-]', '_', part)
+                sanitized_parts.append(sanitized_part)
             
-            md_filename = name_without_ext + ".md"
-            md_path = os.path.join(temp_md_dir, md_filename)
+            md_rel_path = os.path.join(*sanitized_parts) if sanitized_parts else md_rel_path
+            md_path = os.path.join(temp_md_dir, md_rel_path)
             
             if os.path.exists(md_path):
-                logger.warning(f"Name collision for {md_filename}. Overwriting.")
+                logger.warning(f"Name collision for {md_rel_path}. Overwriting.")
                 
             convert_html_to_md(html_file, md_path, source_url=source_url, fetched_at=fetched_at)
             
         logger.info(f"=== Step 3: Normalizing Markdown ===")
-        md_files = glob.glob(os.path.join(temp_md_dir, "*.md"))
+        md_files = glob.glob(os.path.join(temp_md_dir, "**/*.md"), recursive=True)
         for md_file in md_files:
             # Normalize in place
             normalize_markdown(md_file, md_file)
