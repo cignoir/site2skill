@@ -33,6 +33,10 @@ def main():
     parser.add_argument("--skill-output", default=".", help="Output directory for .skill file")
     parser.add_argument("--temp-dir", default="build", help="Temporary directory for processing")
     
+    # Browser / Advanced Fetch Options
+    parser.add_argument("--browser", action="store_true", help="Use browser (Playwright) for fetching instead of wget")
+    parser.add_argument("--sidebar-selector", default=None, help="CSS selector for sidebar links (only used with --browser)")
+    
     parser.add_argument("--skip-fetch", action="store_true", help="Skip the download step (use existing files in temp dir)")
     parser.add_argument("--clean", action="store_true", help="Clean up temporary directory after completion")
     
@@ -55,7 +59,15 @@ def main():
 
         if not args.skip_fetch:
             logger.info(f"=== Step 1: Fetching {args.url} ===")
-            fetch_site(args.url, temp_download_dir)
+            if args.browser:
+                try:
+                    from .fetch_with_browser import fetch_site_with_browser
+                    fetch_site_with_browser(args.url, temp_download_dir, sidebar_selector=args.sidebar_selector)
+                except ImportError:
+                    logger.error("Playwright not installed or found. Please install dependencies.")
+                    exit(1)
+            else:
+                fetch_site(args.url, temp_download_dir)
         else:
             logger.info(f"=== Step 1: Skipped Fetching (Using {temp_download_dir}) ===")
         
@@ -88,16 +100,21 @@ def main():
             scheme = parsed_input_url.scheme if parsed_input_url.scheme else "https"
             
             # Construct URL
-            # Note: This assumes wget preserved the domain directory.
-            # If wget was run with -nH (no host directories), this might be different.
-            # But fetch_site.py uses standard wget -r, which usually creates host dir.
-            # Remove .html extension from source_url (PAY.JP site doesn't use .html in URLs)
-            rel_path_for_url = rel_path[:-5] if rel_path.endswith('.html') else rel_path
-            source_url = f"{scheme}://{rel_path_for_url}"
+            # Note: This has limitations with query params sanitized by browser fetcher
+            # Ideally we would map back, but for now we approximate.
+            # Remove .html extension from source_url (PAY.JP style) or keep it if site uses it.
+            # Simple heuristic: if original rel_path had .html, we treat it as part of path unless strictly stripped.
+            # The original logic stripped it: "rel_path[:-5] if rel_path.endswith('.html') else rel_path"
+            
+            path_part = rel_path
+            if path_part.endswith('.html'):
+                path_part = path_part[:-5]
+
+            # Replace back simplified sanitization for display logic if needed options
+            # For now, simplistic construction
+            source_url = f"{scheme}://{path_part}"
             
             # Determine output filename (preserve directory structure)
-            # rel_path is like "docs.pay.jp/v1/cardtoken.html" or "docs.pay.jp/a/b/index.html"
-            # We want to preserve the structure and replace .html with .md
             md_rel_path = html_to_md_path(rel_path)
             
             # Sanitize path components to avoid invalid characters in zip
@@ -143,6 +160,9 @@ def main():
 
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}")
+        # traceback for debugging
+        import traceback
+        traceback.print_exc()
         exit(1)
 
 if __name__ == "__main__":
